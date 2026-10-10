@@ -1,0 +1,20 @@
+{{define "title"}}Status - kiseki{{end}}
+{{define "content"}}
+<h1>Ingestion status</h1>
+{{if .Rows}}
+<table>
+  <thead><tr><th>Host</th><th>Source</th><th class="num">Records</th><th>Latest event</th><th>Last received</th></tr></thead>
+  <tbody>
+  {{range .Rows}}
+  <tr{{if .Stale}} class="stale"{{end}}>
+    <td>{{.Host}}</td><td>{{.Source}}</td><td class="num">{{.Count}}</td>
+    <td>{{.LatestEvent}}</td>
+    <td>{{.LatestReceived}} <span class="muted">({{.SinceLastReceive}})</span>{{if .Stale}} <strong class="warn">Nothing received for 36+ hours</strong>{{end}}</td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p class="muted">No records yet.</p>
+{{end}}
+{{end}}

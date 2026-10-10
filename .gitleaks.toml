@@ -1,0 +1,8 @@
+title = "kiseki"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fake secrets used to test redaction"
+paths = ['''internal/source/claudecode/claudecode_test\.go''']

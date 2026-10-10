@@ -1,0 +1,16 @@
+{{define "title"}}{{if .Q}}{{.Q}} - {{end}}Search - kiseki{{end}}
+{{define "content"}}
+<h1>Search</h1>
+<form action="/search" method="get" class="searchbar" role="search">
+  <input type="search" name="q" value="{{.Q}}" placeholder="Full-text search" aria-label="Full-text search" autofocus
+         hx-get="/search" hx-trigger="input changed delay:300ms, search" hx-target="#results" hx-push-url="true" hx-include="[name='source']">
+  <select name="source" aria-label="Source" hx-get="/search" hx-trigger="change" hx-target="#results" hx-push-url="true" hx-include="[name='q']">
+    <option value="">All</option>
+    <option value="claude-code"{{if eq .Source "claude-code"}} selected{{end}}>Claude Code</option>
+    <option value="browser-history"{{if eq .Source "browser-history"}} selected{{end}}>Browser</option>
+  </select>
+  <button type="submit">Search</button>
+</form>
+<p class="muted">Queries of three or more characters use the substring index; shorter ones scan every record.</p>
+<div id="results">{{template "results" .}}</div>
+{{end}}

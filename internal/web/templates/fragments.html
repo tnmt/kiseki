@@ -1,0 +1,31 @@
+{{define "domain_urls"}}
+<ul class="urllist">
+  {{range .URLs}}
+  <li>
+    <a href="{{.URL}}" rel="noreferrer noopener" target="_blank">{{if .Title}}{{.Title}}{{else}}{{.URL}}{{end}}</a>
+    <div class="meta"><span class="url">{{.URL}}</span> <span>{{.First}}{{if ne .First .Last}}–{{.Last}}{{end}}{{if gt .Count 1}} · {{.Count}} visits{{end}}</span></div>
+  </li>
+  {{end}}
+</ul>
+{{if .More}}<p class="muted">{{.More}} more are hidden.</p>{{end}}
+{{end}}
+
+{{define "results"}}
+{{if .Q}}
+  {{if .Hits}}
+  <p class="muted">Results: {{len .Hits}}{{if .AtLimit}} (stopped at the limit of {{.Limit}}){{end}}</p>
+  <ul class="hits">
+    {{range .Hits}}
+    <li>
+      <div class="meta"><span class="badge">{{.Source}}</span> <a href="/day/{{.Date}}">{{.When}}</a></div>
+      {{if .External}}<a class="hit-title" href="{{.Link}}" rel="noreferrer noopener" target="_blank">{{.Title}}</a>
+      {{else}}<a class="hit-title" href="{{.Link}}">{{.Title}}</a>{{end}}
+      <p class="excerpt">{{.Snippet}}</p>
+    </li>
+    {{end}}
+  </ul>
+  {{else}}
+  <p class="muted">No records match “{{.Q}}”.</p>
+  {{end}}
+{{end}}
+{{end}}

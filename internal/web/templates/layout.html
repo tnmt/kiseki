@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="htmx-config" content='{"allowEval":false,"includeIndicatorStyles":false}'>
+<meta name="color-scheme" content="light dark">
+<title>{{block "title" .}}kiseki{{end}}</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/htmx.min.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/">kiseki</a>
+  {{if .Authenticated}}
+  <nav>
+    <a href="/">Days</a>
+    <a href="/search">Search</a>
+    <a href="/status">Status</a>
+  </nav>
+  <form class="logout" method="post" action="/logout"><button type="submit" class="linklike">Log out</button></form>
+  {{end}}
+</header>
+<main>
+{{template "content" .}}
+</main>
+</body>
+</html>

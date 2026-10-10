@@ -1,0 +1,56 @@
+{{define "title"}}{{.Date}} - kiseki{{end}}
+{{define "content"}}
+<div class="daynav">
+  <a href="/day/{{.Prev}}" rel="prev">← {{.Prev}}</a>
+  <h1>{{.Date}} ({{.Weekday}})</h1>
+  <a href="/day/{{.Next}}" rel="next">{{.Next}} →</a>
+</div>
+
+{{if .Empty}}<p class="muted">No records for this day.</p>{{end}}
+
+{{if .Sessions}}
+<section>
+  <h2>Claude Code <span class="muted">{{len .Sessions}} sessions</span></h2>
+  <ul class="sessions">
+    {{range .Sessions}}
+    <li>
+      <a class="session-title" href="/session/{{.ID}}">{{if .Title}}{{.Title}}{{else}}(untitled session){{end}}</a>
+      <div class="meta">
+        {{if .Project}}<span class="badge">{{.Project}}</span>{{end}}
+        <span>{{.Start}}–{{.End}}</span>
+        <span>user {{.User}} / replies {{.Reply}}{{if .Sub}} / subagent {{.Sub}}{{end}}</span>
+      </div>
+      {{if .FirstPrompt}}<p class="excerpt">{{.FirstPrompt}}</p>{{end}}
+    </li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
+
+{{if .Domains}}
+<section>
+  <h2>Browser <span class="muted">{{.Visits}} visits</span></h2>
+  <ul class="domains">
+    {{range .Domains}}
+    <li>
+      <details>
+        <summary hx-get="/day/{{$.Date}}/browser?domain={{urlq .Domain}}" hx-target="next .urls" hx-trigger="click once" hx-swap="innerHTML">
+          <span class="domain">{{.Domain}}</span>
+          <span class="muted">{{.Visits}} visits · last {{.Last}}</span>
+        </summary>
+        <div class="urls"><p class="muted">Loading…</p></div>
+      </details>
+    </li>
+    {{end}}
+  </ul>
+  {{if .HiddenDomains}}<p class="muted">{{.HiddenDomains}} more domains with few visits are hidden. Use search to find them.</p>{{end}}
+</section>
+{{end}}
+
+{{if .Other}}
+<section>
+  <h2>Other</h2>
+  <ul>{{range .Other}}<li>{{.Label}}: {{.N}}</li>{{end}}</ul>
+</section>
+{{end}}
+{{end}}

@@ -1,0 +1,11 @@
+{{define "title"}}Log in - kiseki{{end}}
+{{define "content"}}
+<h1>Log in</h1>
+<form method="post" action="/login" class="login">
+  <label for="token">Read token</label>
+  <input id="token" name="token" type="password" autocomplete="current-password" autofocus required>
+  <input type="hidden" name="next" value="{{.Next}}">
+  {{if .Error}}<p class="error" role="alert">{{.Error}}</p>{{end}}
+  <button type="submit">Log in</button>
+</form>
+{{end}}

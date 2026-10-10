@@ -1,0 +1,38 @@
+{{define "title"}}{{.Title}} - kiseki{{end}}
+{{define "content"}}
+<p><a href="/day/{{.Date}}">← {{.Date}}</a></p>
+<h1>{{.Title}}</h1>
+<div class="meta">
+  {{if .Project}}<span class="badge" title="{{.CWD}}">{{.Project}}</span>{{end}}
+  <span>{{.Start}} – {{.End}}</span>
+  <span>{{.Total}} messages</span>
+</div>
+
+{{template "pager" .}}
+<ol class="transcript">
+  {{range .Messages}}
+  <li id="m-{{.UUID}}" class="msg {{.Role}}{{if .Sidechain}} sidechain{{end}}">
+    <div class="msg-head"><span class="role">{{if eq .Role "user"}}User{{else}}Claude{{end}}{{if .Sidechain}} (subagent){{end}}</span> <a class="time" href="#m-{{.UUID}}">{{.Time}}</a></div>
+    {{range .Parts}}
+      {{if eq .Kind "text"}}<div class="text">{{.Text}}{{if .Truncated}}<span class="muted"> … (truncated)</span>{{end}}</div>
+      {{else if eq .Kind "thinking"}}<details class="thinking"><summary>Thinking</summary><div class="text">{{.Text}}{{if .Truncated}}<span class="muted"> … (truncated)</span>{{end}}</div></details>
+      {{else if eq .Kind "tool_use"}}<div class="tool"><span class="badge">{{.Name}}</span> <code>{{.Text}}</code></div>
+      {{else if eq .Kind "tool_result"}}<details class="result"><summary>Tool result</summary><pre>{{.Text}}{{if .Truncated}}
+… (truncated){{end}}</pre></details>
+      {{else}}<div class="muted">{{.Text}}</div>{{end}}
+    {{end}}
+  </li>
+  {{end}}
+</ol>
+{{template "pager" .}}
+{{end}}
+
+{{define "pager"}}
+{{if gt .Pages 1}}
+<nav class="pager" aria-label="Pages">
+  {{if gt .Page 1}}<a href="/session/{{.ID}}?page={{.PrevPage}}">← Prev</a>{{end}}
+  <span>{{.Page}} / {{.Pages}}</span>
+  {{if lt .Page .Pages}}<a href="/session/{{.ID}}?page={{.NextPage}}">Next →</a>{{end}}
+</nav>
+{{end}}
+{{end}}

@@ -1,0 +1,26 @@
+{{define "title"}}kiseki{{end}}
+{{define "content"}}
+{{if .NotFound}}
+<h1>Not found</h1>
+<p><a href="/">Back to days</a></p>
+{{else}}
+<form action="/search" method="get" class="searchbar" role="search">
+  <input type="search" name="q" placeholder="Full-text search" aria-label="Full-text search">
+  <button type="submit">Search</button>
+</form>
+<h1>Days</h1>
+<p><a href="/day/{{.Today}}">Open today ({{.Today}})</a></p>
+{{if .Days}}
+<ul class="days">
+  {{range .Days}}
+  <li>
+    <a href="/day/{{.Date}}">{{.Date}} ({{.Weekday}})</a>
+    <span class="counts">{{range .Counts}}<span class="badge">{{.Label}} {{.N}}</span>{{end}}</span>
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p class="muted">No records yet.</p>
+{{end}}
+{{end}}
+{{end}}
