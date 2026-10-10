@@ -10,12 +10,13 @@ let
   json = pkgs.formats.json { };
 
   settings = {
-    server = cfg.server;
     token_file = cfg.tokenFile;
     spool_dir = cfg.spoolDir;
     timezone = cfg.timezone;
     overlap_hours = cfg.overlapHours;
   }
+  // lib.optionalAttrs (cfg.server != null) { server = cfg.server; }
+  // lib.optionalAttrs (cfg.serverFile != null) { server_file = cfg.serverFile; }
   // lib.optionalAttrs cfg.browserHistory.enable {
     browser_history = {
       browsers = cfg.browserHistory.browsers;
@@ -48,9 +49,20 @@ in
     };
 
     server = lib.mkOption {
-      type = lib.types.str;
+      type = lib.types.nullOr lib.types.str;
+      default = null;
       example = "https://kiseki.example.com";
-      description = "Base URL of the kiseki server.";
+      description = "Base URL of the kiseki server. Set this or `serverFile`.";
+    };
+
+    serverFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        Path of a file holding the server's base URL, read at run time.
+        Use it instead of `server` to keep the URL out of the Nix store
+        and of a public configuration repository.
+      '';
     };
 
     tokenFile = lib.mkOption {
@@ -129,6 +141,15 @@ in
 
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
+      {
+        assertions = [
+          {
+            assertion = (cfg.server == null) != (cfg.serverFile == null);
+            message = "programs.kiseki-agent: set exactly one of server and serverFile.";
+          }
+        ];
+      }
+
       (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
         systemd.user.services.kiseki-agent = {
           Unit = {

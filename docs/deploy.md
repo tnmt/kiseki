@@ -147,6 +147,8 @@ journalctl --user -u kiseki-agent -e
 
 The first run sends the whole history and takes some tens of seconds.
 
+To keep the server URL out of a public configuration, set `serverFile` to a file holding the URL (decrypted by sops-nix, for example) instead of `server`.
+
 ### 7. Check the backup
 
 ```

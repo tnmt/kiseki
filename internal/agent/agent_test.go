@@ -279,11 +279,22 @@ func TestLoadConfig(t *testing.T) {
 	if err != nil || c.Server != "https://k.example" || c.OverlapHours != 48 {
 		t.Errorf("good config: %+v %v", c, err)
 	}
+	serverFile := filepath.Join(t.TempDir(), "server")
+	os.WriteFile(serverFile, []byte("https://k.example/\n"), 0o600)
+	c, err = LoadConfig(write(`{"server_file":"` + serverFile + `","token_file":"t","spool_dir":"s","timezone":"UTC"}`))
+	if err != nil || c.Server != "https://k.example" {
+		t.Errorf("server_file: %+v %v", c, err)
+	}
+	emptyFile := filepath.Join(t.TempDir(), "empty")
+	os.WriteFile(emptyFile, []byte("\n"), 0o600)
 	for name, body := range map[string]string{
-		"missing server": `{"token_file":"t","spool_dir":"s","timezone":"UTC"}`,
-		"bad timezone":   `{"server":"x","token_file":"t","spool_dir":"s","timezone":"Not/AZone"}`,
-		"unknown field":  `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC","oops":1}`,
-		"negative":       `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC","overlap_hours":-1}`,
+		"missing server":    `{"token_file":"t","spool_dir":"s","timezone":"UTC"}`,
+		"both servers":      `{"server":"x","server_file":"` + serverFile + `","token_file":"t","spool_dir":"s","timezone":"UTC"}`,
+		"absent serverfile": `{"server_file":"/nonexistent/kiseki-server","token_file":"t","spool_dir":"s","timezone":"UTC"}`,
+		"empty serverfile":  `{"server_file":"` + emptyFile + `","token_file":"t","spool_dir":"s","timezone":"UTC"}`,
+		"bad timezone":      `{"server":"x","token_file":"t","spool_dir":"s","timezone":"Not/AZone"}`,
+		"unknown field":     `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC","oops":1}`,
+		"negative":          `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC","overlap_hours":-1}`,
 	} {
 		if _, err := LoadConfig(write(body)); err == nil {
 			t.Errorf("%s: expected error", name)

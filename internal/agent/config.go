@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	Server       string `json:"server"`
+	ServerFile   string `json:"server_file"`
 	TokenFile    string `json:"token_file"`
 	SpoolDir     string `json:"spool_dir"`
 	Timezone     string `json:"timezone"`
@@ -50,8 +51,21 @@ func LoadConfig(path string) (*Config, error) {
 	if err := dec.Decode(&c); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	if c.Server == "" || c.TokenFile == "" || c.SpoolDir == "" {
-		return nil, errors.New("config: server, token_file and spool_dir are required")
+	if (c.Server == "") == (c.ServerFile == "") {
+		return nil, errors.New("config: exactly one of server and server_file is required")
+	}
+	if c.ServerFile != "" {
+		b, err := os.ReadFile(c.ServerFile)
+		if err != nil {
+			return nil, fmt.Errorf("config: server_file: %w", err)
+		}
+		c.Server = strings.TrimSpace(string(b))
+		if c.Server == "" {
+			return nil, fmt.Errorf("config: server_file %s is empty", c.ServerFile)
+		}
+	}
+	if c.TokenFile == "" || c.SpoolDir == "" {
+		return nil, errors.New("config: token_file and spool_dir are required")
 	}
 	c.Server = strings.TrimRight(c.Server, "/")
 	if c.OverlapHours == 0 {
