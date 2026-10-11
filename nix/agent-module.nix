@@ -6,7 +6,7 @@
   ...
 }:
 let
-  cfg = config.programs.kiseki-agent;
+  cfg = config.services.kiseki-agent;
   json = pkgs.formats.json { };
 
   settings = {
@@ -41,7 +41,7 @@ let
   ];
 in
 {
-  options.programs.kiseki-agent = {
+  options.services.kiseki-agent = {
     enable = lib.mkEnableOption "the kiseki agent";
 
     package = lib.mkOption {
@@ -156,7 +156,7 @@ in
         assertions = [
           {
             assertion = (cfg.server == null) != (cfg.serverFile == null);
-            message = "programs.kiseki-agent: set exactly one of server and serverFile.";
+            message = "services.kiseki-agent: set exactly one of server and serverFile.";
           }
         ];
       }

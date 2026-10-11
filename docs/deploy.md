@@ -18,7 +18,7 @@ The flake provides:
 | --- | --- |
 | `packages.<system>.default` | The `kiseki` binary (`CGO_ENABLED=0`) |
 | `nixosModules.default` | `services.kiseki` (server, token definitions, snapshot) |
-| `homeManagerModules.kiseki-agent` | `programs.kiseki-agent` (a systemd timer on Linux, launchd on macOS) |
+| `homeManagerModules.kiseki-agent` | `services.kiseki-agent` (a systemd timer on Linux, launchd on macOS) |
 
 ## Design choices
 
@@ -137,7 +137,7 @@ Add this to the Home Manager configuration:
 {
   imports = [ inputs.kiseki.homeManagerModules.kiseki-agent ];
 
-  programs.kiseki-agent = {
+  services.kiseki-agent = {
     enable = true;
     server = "https://kiseki.example.com";
     tokenFile = "/home/user/.config/kiseki/token";

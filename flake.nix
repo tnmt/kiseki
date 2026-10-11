@@ -43,7 +43,7 @@
         { pkgs, ... }:
         {
           imports = [ ./nix/agent-module.nix ];
-          programs.kiseki-agent.package =
+          services.kiseki-agent.package =
             nixpkgs.lib.mkDefault
               self.packages.${pkgs.stdenv.hostPlatform.system}.default;
         };
