@@ -88,5 +88,5 @@ Measured on 2026-10-10 against real data from one machine (about 46,000 browser 
 
 ## Not implemented
 
-- Rendering for Withings and GitHub (their collectors do not exist yet). Those sources appear only as counts under "Other" on the day page.
+- Rendering for Withings and GitHub. Those sources appear only as counts under "Other" on the day page.
 - The JSON API for Inbox (`/api/v1/days/{date}` and others).

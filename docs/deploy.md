@@ -107,6 +107,8 @@ nix run github:tnmt/kiseki -- token new -name laptop -host laptop -sources brows
 
 Put a TLS-terminating reverse proxy in front of `127.0.0.1:8096`. The server accepts requests up to 8 MiB, so with nginx set `client_max_body_size` above that (for example `16m`).
 
+To collect Withings measurements, set `services.kiseki.withings` and authorize once as described in [the Withings collector](withings.md).
+
 ### 5. Check the server
 
 ```
