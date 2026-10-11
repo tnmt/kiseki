@@ -16,6 +16,7 @@ import (
 
 	"github.com/tnmt/kiseki/internal/auth"
 	"github.com/tnmt/kiseki/internal/server"
+	"github.com/tnmt/kiseki/internal/source/browserhistory"
 	"github.com/tnmt/kiseki/internal/store"
 	_ "modernc.org/sqlite"
 )
@@ -295,10 +296,39 @@ func TestLoadConfig(t *testing.T) {
 		"bad timezone":      `{"server":"x","token_file":"t","spool_dir":"s","timezone":"Not/AZone"}`,
 		"unknown field":     `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC","oops":1}`,
 		"negative":          `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC","overlap_hours":-1}`,
+		"profile without browser": `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC",
+			"browser_history":{"browsers":["chrome"],"exclude_profiles":["Profile 1"]}}`,
+		"profile of unlisted browser": `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC",
+			"browser_history":{"browsers":["chrome"],"exclude_profiles":["brave/Profile 1"]}}`,
 	} {
 		if _, err := LoadConfig(write(body)); err == nil {
 			t.Errorf("%s: expected error", name)
 		}
+	}
+}
+
+func TestBrowserProfilesSkipsExcluded(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	dir := browserhistory.UserDataDir("chrome", home)
+	if dir == "" {
+		t.Skip("chrome is not supported on this platform")
+	}
+	os.MkdirAll(dir, 0o700)
+	os.WriteFile(filepath.Join(dir, "Local State"), []byte(`{"profile":{"info_cache":{"Default":{},"Profile 1":{}}}}`), 0o600)
+	for _, name := range []string{"Default", "Profile 1"} {
+		os.MkdirAll(filepath.Join(dir, name), 0o700)
+		os.WriteFile(filepath.Join(dir, name, "History"), nil, 0o600)
+	}
+
+	got, err := browserProfiles(&BrowserHistoryConfig{
+		Browsers: []string{"chrome"}, ExcludeProfiles: []string{"chrome/Profile 1"},
+	}, quiet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Key() != "chrome/Default" {
+		t.Errorf("profiles = %+v, want only chrome/Default", got)
 	}
 }
 
