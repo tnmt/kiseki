@@ -210,7 +210,7 @@ func TestIndexAndDay(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Storage design", "myproject", "10:10–10:12", "user 1 / replies 1", "保存形式を検討したい",
-		"example.com", "3 visits", "other.test", `href="/day/2026-10-09"`, `href="/day/2026-10-11"`,
+		"example.com", "3 visits", "other.test", "1 visit ·", "1 session<", `href="/day/2026-10-09"`, `href="/day/2026-10-11"`,
 		`hx-get="/day/2026-10-10/browser?domain=example.com"`, `href="/session/11111111-2222-3333-4444-555555555555"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -432,7 +432,7 @@ func TestDayShowsWeighIns(t *testing.T) {
 	})
 	s.login(t)
 	_, body, _ := s.get(t, "/day/2026-10-10")
-	for _, want := range []string{"1 weigh-ins", "07:00", "Weight <b>55.7kg</b>", "Fat <b>15.7%</b>"} {
+	for _, want := range []string{"1 weigh-in<", "07:00", "Weight <b>55.7kg</b>", "Fat <b>15.7%</b>"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("day page lacks %q", want)
 		}
@@ -442,5 +442,22 @@ func TestDayShowsWeighIns(t *testing.T) {
 	}
 	if strings.Index(body, "Withings") > strings.Index(body, "Claude Code") {
 		t.Error("weigh-ins should come first")
+	}
+}
+
+func TestFirstPromptDropsPastedTags(t *testing.T) {
+	s := newSite(t)
+	const sid = "22222222-3333-4444-5555-666666666666"
+	s.store.Upsert(context.Background(), "claude-code", "laptop", []store.Record{
+		rec(sid+":u1", base, map[string]any{"type": "user", "uuid": "u1", "sessionId": sid,
+			"message": map[string]any{"content": "<pasted_content id=\"ea3e\">貼り付けた本文</pasted_content> これを続けて"}}),
+	})
+	s.login(t)
+	_, body, _ := s.get(t, "/day/2026-10-10")
+	if strings.Contains(body, "pasted_content") {
+		t.Error("excerpt keeps the pasted_content tags")
+	}
+	if !strings.Contains(body, "貼り付けた本文 これを続けて") {
+		t.Error("excerpt lost the pasted text")
 	}
 }

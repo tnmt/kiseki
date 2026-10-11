@@ -38,7 +38,9 @@ ul.days li { display: flex; justify-content: space-between; gap: 12px; flex-wrap
 .session-title, .hit-title { font-weight: 600; }
 .excerpt { margin: 4px 0 0; color: var(--muted); overflow-wrap: anywhere; }
 .daynav { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.daynav h1 { margin: 24px 0 12px; }
+.daynav h1 { margin: 24px 0 12px; text-align: center; }
+.daynav a { white-space: nowrap; }
+@media (max-width: 600px) { .daynav h1 { font-size: 1.15rem; } }
 ul.domains li { border-bottom: 1px solid var(--line); }
 ul.weighins { list-style: none; margin: 0; padding: 0; }
 ul.weighins li { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }

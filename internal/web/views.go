@@ -30,6 +30,18 @@ var sessionIDPattern = regexp.MustCompile(`^[0-9a-fA-F-]{8,64}$`)
 
 func itoa(n int) string { return strconv.Itoa(n) }
 
+// count formats n with a noun that takes a plain "s" plural.
+func count(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return strconv.Itoa(n) + " " + noun + "s"
+}
+
+// pastedTag matches the tags Claude Code wraps around pasted text. They are
+// noise in an excerpt; the pasted text itself is kept.
+var pastedTag = regexp.MustCompile(`</?pasted_content\b[^>]*>`)
+
 func sourceLabel(source string) string {
 	switch source {
 	case "browser-history":
@@ -195,7 +207,7 @@ func (w *Web) handleDay(rw http.ResponseWriter, r *http.Request) {
 				if text := plainText(l.Message.Content); text != "" {
 					s.User++
 					if s.FirstPrompt == "" {
-						s.FirstPrompt = truncate(text, 120)
+						s.FirstPrompt = truncate(pastedTag.ReplaceAllString(text, " "), 120)
 					}
 				}
 			case l.Type == "assistant":
