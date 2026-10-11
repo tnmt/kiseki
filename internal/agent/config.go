@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 )
@@ -28,8 +29,12 @@ type BrowserHistoryConfig struct {
 	// "brave-origin" and "chrome".
 	Browsers []string `json:"browsers"`
 	// HistoryPaths are History files outside the default locations.
-	HistoryPaths   []string `json:"history_paths"`
-	ExcludeDomains []string `json:"exclude_domains"`
+	HistoryPaths []string `json:"history_paths"`
+	// ExcludeProfiles are "<browser>/<profile directory>" entries, such as
+	// "brave-origin/Profile 1". The directory name is used rather than the
+	// display name because renaming a profile must not start sending it.
+	ExcludeProfiles []string `json:"exclude_profiles"`
+	ExcludeDomains  []string `json:"exclude_domains"`
 }
 
 type ClaudeCodeConfig struct {
@@ -83,6 +88,14 @@ func LoadConfig(path string) (*Config, error) {
 	}
 	if _, err := time.LoadLocation(c.Timezone); err != nil {
 		return nil, fmt.Errorf("config: timezone: %w", err)
+	}
+	if bh := c.BrowserHistory; bh != nil {
+		for _, e := range bh.ExcludeProfiles {
+			browser, name, ok := strings.Cut(e, "/")
+			if !ok || name == "" || !slices.Contains(bh.Browsers, browser) {
+				return nil, fmt.Errorf("config: exclude_profiles: %q must be <browser>/<profile directory> with a browser listed in browsers", e)
+			}
+		}
 	}
 	return &c, nil
 }

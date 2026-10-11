@@ -21,6 +21,7 @@ let
     browser_history = {
       browsers = cfg.browserHistory.browsers;
       history_paths = cfg.browserHistory.historyPaths;
+      exclude_profiles = cfg.browserHistory.excludeProfiles;
       exclude_domains = cfg.browserHistory.excludeDomains;
     };
   }
@@ -116,6 +117,16 @@ in
         type = lib.types.listOf lib.types.str;
         default = [ ];
         description = "History files in non-default locations.";
+      };
+      excludeProfiles = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [ "brave-origin/Profile 1" ];
+        description = ''
+          Profiles that are never sent, as `<browser>/<profile directory>`.
+          The directory is shown as the profile path on brave://version or
+          chrome://version.
+        '';
       };
       excludeDomains = lib.mkOption {
         type = lib.types.listOf lib.types.str;

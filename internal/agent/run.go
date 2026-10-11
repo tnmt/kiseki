@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/tnmt/kiseki/internal/source/browserhistory"
@@ -131,7 +132,13 @@ func browserProfiles(bh *BrowserHistoryConfig, log *slog.Logger) ([]browserhisto
 			if err != nil {
 				return nil, fmt.Errorf("%s: %w", browser, err)
 			}
-			profiles = append(profiles, found...)
+			for _, p := range found {
+				if slices.Contains(bh.ExcludeProfiles, p.Key()) {
+					log.Info("skipping excluded profile", "profile", p.Key())
+					continue
+				}
+				profiles = append(profiles, p)
+			}
 		}
 	}
 	for _, path := range bh.HistoryPaths {

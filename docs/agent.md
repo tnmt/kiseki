@@ -16,6 +16,7 @@ JSON. Unknown fields are an error.
   "browser_history": {
     "browsers": ["brave-origin", "chrome"],
     "history_paths": [],
+    "exclude_profiles": ["brave-origin/Profile 1"],
     "exclude_domains": ["example.com"]
   },
   "claude_code": {
@@ -31,6 +32,7 @@ JSON. Unknown fields are an error.
 - `overlap_hours`: how far back to resend. Defaults to 48.
 - `browsers`: profiles are discovered by reading `Local State` in the default data directory. Supported: `brave-origin` and `chrome` (Linux and macOS).
 - `history_paths`: `History` files in non-default locations.
+- `exclude_profiles`: profiles that are never read, as `<browser>/<profile directory>`. The browser must be listed in `browsers`. The directory name (`Default`, `Profile 1`, ...) appears as the profile path on `brave://version` or `chrome://version`. The display name is not accepted, so renaming a profile does not start sending it. Records already sent from the profile stay on the server.
 - `exclude_domains`: excludes exact host matches and their subdomains. `example.com` excludes `www.example.com` but not `notexample.com`.
 - `claude_code.projects_dir`: defaults to `~/.claude/projects`.
 - `claude_code.exclude_cwd_prefixes`: sessions whose working directory is under one of these paths are not sent. Matching is by path component, so `/a/sec` does not match `/a/secret`.
