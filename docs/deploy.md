@@ -109,6 +109,16 @@ Put a TLS-terminating reverse proxy in front of `127.0.0.1:8096`. The server acc
 
 To collect Withings measurements, set `services.kiseki.withings` and authorize once as described in [the Withings collector](withings.md).
 
+To show stays and moves from overland-server on the day page, give kiseki overland-server's read token:
+
+```nix
+services.kiseki.overland = {
+  enable = true;
+  url = "http://${config.services.overland-server.listenAddress}";
+  readTokenFile = config.sops.secrets.overland_read_token.path;
+};
+```
+
 ### 5. Check the server
 
 ```

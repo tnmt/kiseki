@@ -6,7 +6,7 @@ kiseki (軌跡, "trajectory") collects a personal lifelog and stores it on a ser
 
 - obsidian-daily-inbox (Inbox below) stays a transient view that owns no data. kiseki holds the lifelog itself.
 - Inbox reads kiseki through one additional `ContextSource` that calls the kiseki API. That work belongs to Inbox and is out of scope here.
-- Location data is owned by overland-server and is not copied into kiseki.
+- Location data is owned by overland-server and is not copied into kiseki. The web day page reads it from overland-server's read API when the page is rendered (`docs/web.md`).
 
 ## Decisions
 
@@ -33,7 +33,7 @@ The sources under Inbox's `src/sources/`.
 | Claude Code sessions | Stored. `~/.claude/projects` | agent |
 | withings | Stored. Raw data dumped periodically | serve (collector) |
 | github | Stored. Low priority because it can be backfilled | serve (collector) |
-| location | Not copied. overland-server owns it | none |
+| location | Not copied. overland-server owns it; the web day page reads its API | none |
 | dropbox | Not stored. The originals live in Dropbox and do not disappear | none |
 | on-this-day | Not stored. It is a view derived inside Inbox | none |
 

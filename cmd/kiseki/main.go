@@ -17,6 +17,7 @@ import (
 	"github.com/tnmt/kiseki/internal/agent"
 	"github.com/tnmt/kiseki/internal/auth"
 	"github.com/tnmt/kiseki/internal/collector/withings"
+	"github.com/tnmt/kiseki/internal/overland"
 	"github.com/tnmt/kiseki/internal/server"
 	"github.com/tnmt/kiseki/internal/source"
 	"github.com/tnmt/kiseki/internal/store"
@@ -107,6 +108,8 @@ func serve(args []string) error {
 	withingsSecretFile := fs.String("withings-client-secret-file", "", "file containing the Withings application client secret")
 	withingsInterval := fs.Duration("withings-interval", time.Hour, "how often the Withings collector runs; Withings allows one call per 10 minutes")
 	withingsOverlap := fs.Duration("withings-overlap", 48*time.Hour, "how far before the previous sync the Withings collector starts")
+	overlandURL := fs.String("overland-url", "", "base URL of overland-server, whose stays and moves the web interface shows on each day; disabled when unset")
+	overlandTokenFile := fs.String("overland-read-token-file", "", "file containing overland-server's read token")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -124,8 +127,19 @@ func serve(args []string) error {
 	defer st.Close()
 
 	var handler http.Handler = server.New(st, tokens, source.Known).Handler()
+	var locations web.LocationSource
+	if *overlandURL != "" {
+		if *readTokenFile == "" {
+			return errors.New("-overland-url requires the web interface (-read-token-file)")
+		}
+		token, err := readSecret(*overlandTokenFile, "overland read token")
+		if err != nil {
+			return err
+		}
+		locations = &overland.Client{BaseURL: *overlandURL, Token: token, HTTP: &http.Client{Timeout: 10 * time.Second}}
+	}
 	if *readTokenFile != "" {
-		webHandler, err := newWebHandler(st, *readTokenFile, *tz)
+		webHandler, err := newWebHandler(st, *readTokenFile, *tz, locations)
 		if err != nil {
 			return err
 		}
@@ -176,20 +190,31 @@ func serve(args []string) error {
 	return nil
 }
 
-func newWebHandler(st *store.Store, tokenFile, tz string) (http.Handler, error) {
-	b, err := os.ReadFile(tokenFile)
-	if err != nil {
-		return nil, fmt.Errorf("read token: %w", err)
+func readSecret(path, what string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("a file containing the %s is required", what)
 	}
-	token := strings.TrimSpace(string(b))
-	if token == "" {
-		return nil, errors.New("read token file is empty")
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", what, err)
+	}
+	secret := strings.TrimSpace(string(b))
+	if secret == "" {
+		return "", fmt.Errorf("%s file is empty", what)
+	}
+	return secret, nil
+}
+
+func newWebHandler(st *store.Store, tokenFile, tz string, locations web.LocationSource) (http.Handler, error) {
+	token, err := readSecret(tokenFile, "read token")
+	if err != nil {
+		return nil, err
 	}
 	loc, err := time.LoadLocation(tz)
 	if err != nil {
 		return nil, fmt.Errorf("timezone: %w", err)
 	}
-	w, err := web.New(web.Config{Store: st, ReadToken: token, Location: loc, FailDelay: 500 * time.Millisecond})
+	w, err := web.New(web.Config{Store: st, ReadToken: token, Location: loc, FailDelay: 500 * time.Millisecond, Locations: locations})
 	if err != nil {
 		return nil, err
 	}
@@ -200,13 +225,9 @@ func withingsApp(clientID, secretFile, redirectURI string) (*withings.App, error
 	if clientID == "" || secretFile == "" {
 		return nil, errors.New("the Withings client ID and client secret file are required")
 	}
-	b, err := os.ReadFile(secretFile)
+	secret, err := readSecret(secretFile, "withings client secret")
 	if err != nil {
-		return nil, fmt.Errorf("withings client secret: %w", err)
-	}
-	secret := strings.TrimSpace(string(b))
-	if secret == "" {
-		return nil, errors.New("withings client secret file is empty")
+		return nil, err
 	}
 	return &withings.App{
 		ClientID: clientID, ClientSecret: secret, RedirectURI: redirectURI,

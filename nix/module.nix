@@ -140,6 +140,26 @@ in
       };
     };
 
+    overland = {
+      enable = lib.mkEnableOption ''
+        stays and moves from overland-server on the day page of the web
+        interface. Location data is read at request time and not stored'';
+
+      url = lib.mkOption {
+        type = lib.types.str;
+        example = "http://127.0.0.1:8095";
+        description = "Base URL of overland-server.";
+      };
+
+      readTokenFile = lib.mkOption {
+        type = lib.types.path;
+        description = ''
+          File containing overland-server's read token. Read through systemd
+          credentials, so it may be owned by root.
+        '';
+      };
+    };
+
     snapshot = {
       enable = lib.mkEnableOption ''
         the kiseki-snapshot job, which writes a consistent copy of the database
@@ -156,6 +176,13 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = cfg.overland.enable -> cfg.readTokenFile != null;
+        message = "services.kiseki.overland requires the web interface (services.kiseki.readTokenFile).";
+      }
+    ];
+
     users.users.kiseki = {
       isSystemUser = true;
       group = "kiseki";
@@ -196,11 +223,18 @@ in
             "-withings-interval"
             cfg.withings.interval
           ]
+          ++ lib.optionals cfg.overland.enable [
+            "-overland-url"
+            cfg.overland.url
+            "-overland-read-token-file"
+            "%d/overland-read-token"
+          ]
         );
         ExecStartPre = lib.mkIf cfg.withings.enable "${pkgs.coreutils}/bin/mkdir -p ${withingsDir}";
         LoadCredential =
           lib.optional (cfg.readTokenFile != null) "read-token:${cfg.readTokenFile}"
-          ++ lib.optional cfg.withings.enable "withings-client-secret:${cfg.withings.clientSecretFile}";
+          ++ lib.optional cfg.withings.enable "withings-client-secret:${cfg.withings.clientSecretFile}"
+          ++ lib.optional cfg.overland.enable "overland-read-token:${cfg.overland.readTokenFile}";
         Restart = "on-failure";
         RestartSec = 5;
         RestrictAddressFamilies = [

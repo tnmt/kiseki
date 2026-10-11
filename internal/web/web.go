@@ -35,6 +35,8 @@ type Config struct {
 	Now      func() time.Time
 	// FailDelay slows down wrong-token attempts.
 	FailDelay time.Duration
+	// Locations adds stays and moves to the day page when set.
+	Locations LocationSource
 }
 
 type Web struct {
