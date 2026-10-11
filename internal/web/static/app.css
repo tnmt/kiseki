@@ -40,6 +40,10 @@ ul.days li { display: flex; justify-content: space-between; gap: 12px; flex-wrap
 .daynav { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .daynav h1 { margin: 24px 0 12px; }
 ul.domains li { border-bottom: 1px solid var(--line); }
+ul.weighins { list-style: none; margin: 0; padding: 0; }
+ul.weighins li { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.metrics { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.metric b { font-variant-numeric: tabular-nums; }
 details > summary { cursor: pointer; padding: 8px 0; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .domain { font-weight: 600; overflow-wrap: anywhere; }
 .urls { padding: 0 0 12px 16px; }

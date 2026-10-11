@@ -166,6 +166,7 @@ func (w *Web) handleDay(rw http.ResponseWriter, r *http.Request) {
 	domains := map[string]*domainGroup{}
 	visits := 0
 	other := map[string]int{}
+	var withingsRows []store.Row
 
 	for _, row := range rows {
 		switch row.Source {
@@ -216,6 +217,8 @@ func (w *Web) handleDay(rw http.ResponseWriter, r *http.Request) {
 			g.Visits++
 			g.Last = clock(row.OccurredAt, row.TZ, "15:04")
 			visits++
+		case "withings":
+			withingsRows = append(withingsRows, row)
 		default:
 			other[row.Source]++
 		}
@@ -248,6 +251,7 @@ func (w *Web) handleDay(rw http.ResponseWriter, r *http.Request) {
 	w.render(rw, r, "day.html", http.StatusOK, map[string]any{
 		"Date": date, "Weekday": weekday(t.Weekday()),
 		"Prev": t.AddDate(0, 0, -1).Format(time.DateOnly), "Next": t.AddDate(0, 0, 1).Format(time.DateOnly),
+		"WeighIns": weighIns(withingsRows),
 		"Sessions": sessionList, "Domains": domainList, "HiddenDomains": hidden, "Visits": visits,
 		"Other": otherList, "Empty": len(rows) == 0,
 	})

@@ -388,3 +388,59 @@ func TestSnippet(t *testing.T) {
 		t.Errorf("fallback = %q", got)
 	}
 }
+
+func measures(ms ...[3]int64) map[string]any {
+	var list []map[string]any
+	for _, m := range ms {
+		list = append(list, map[string]any{"type": m[0], "value": m[1], "unit": m[2]})
+	}
+	return map[string]any{"category": 1, "measures": list}
+}
+
+func TestWeighIns(t *testing.T) {
+	row := func(at time.Time, payload map[string]any) store.Row {
+		b, _ := json.Marshal(payload)
+		return store.Row{Source: "withings", OccurredAt: at.UnixMilli(), TZ: "Asia/Tokyo", Payload: string(b)}
+	}
+	got := weighIns([]store.Row{
+		row(base, measures([3]int64{1, 55700, -3}, [3]int64{6, 1574, -2}, [3]int64{76, 4440, -2}, [3]int64{8, 880, -2})),
+		row(base.Add(time.Minute), measures([3]int64{11, 62, 0})),
+		row(base.Add(2*time.Minute), measures([3]int64{91, 6040, -3}, [3]int64{155, 38, 0})),
+		row(base.Add(3*time.Minute), measures([3]int64{1, 55900, -3})),
+		// Further than the gap from the previous group: a second weigh-in.
+		row(base.Add(34*time.Minute), measures([3]int64{1, 56100, -3})),
+		// Only types that are not displayed.
+		row(base.Add(5*time.Hour), measures([3]int64{77, 40000, -3})),
+	})
+	if len(got) != 2 {
+		t.Fatalf("weigh-ins = %+v", got)
+	}
+	want := []metric{{"Weight", "55.9kg"}, {"Fat", "15.7%"}, {"Muscle", "44.4kg"}, {"PWV", "6.0m/s"}, {"HR", "62bpm"}, {"Vascular age", "38"}}
+	if got[0].Time != "10:00" || fmt.Sprint(got[0].Metrics) != fmt.Sprint(want) {
+		t.Errorf("first = %+v", got[0])
+	}
+	if got[1].Time != "10:34" || fmt.Sprint(got[1].Metrics) != fmt.Sprint([]metric{{"Weight", "56.1kg"}}) {
+		t.Errorf("second = %+v", got[1])
+	}
+}
+
+func TestDayShowsWeighIns(t *testing.T) {
+	s := newSite(t)
+	seed(t, s)
+	s.store.Upsert(context.Background(), "withings", "server", []store.Record{
+		rec("1", base.Add(-3*time.Hour), measures([3]int64{1, 55700, -3}, [3]int64{6, 1574, -2})),
+	})
+	s.login(t)
+	_, body, _ := s.get(t, "/day/2026-10-10")
+	for _, want := range []string{"1 weigh-ins", "07:00", "Weight <b>55.7kg</b>", "Fat <b>15.7%</b>"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("day page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "<h2>Other</h2>") {
+		t.Error("withings still listed under Other")
+	}
+	if strings.Index(body, "Withings") > strings.Index(body, "Claude Code") {
+		t.Error("weigh-ins should come first")
+	}
+}

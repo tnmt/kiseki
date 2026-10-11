@@ -44,6 +44,7 @@ let
   };
 
   dbPath = "/var/lib/kiseki/kiseki.db";
+  withingsDir = "/var/lib/kiseki/withings";
 in
 {
   options.services.kiseki = {
@@ -107,6 +108,38 @@ in
       );
     };
 
+    host = lib.mkOption {
+      type = lib.types.str;
+      default = config.networking.hostName;
+      defaultText = lib.literalExpression "config.networking.hostName";
+      description = "Host name recorded with records from server-side collectors.";
+    };
+
+    withings = {
+      enable = lib.mkEnableOption ''
+        the Withings collector. Authorize it once with `kiseki withings auth`
+        and place the resulting token.json in /var/lib/kiseki/withings'';
+
+      clientId = lib.mkOption {
+        type = lib.types.str;
+        description = "Client ID of the Withings developer application.";
+      };
+
+      clientSecretFile = lib.mkOption {
+        type = lib.types.path;
+        description = ''
+          File containing the application's client secret. Read through
+          systemd credentials, so it may be owned by root.
+        '';
+      };
+
+      interval = lib.mkOption {
+        type = lib.types.str;
+        default = "1h";
+        description = "How often the collector runs, as a Go duration. At least 10m, the Withings rate limit.";
+      };
+    };
+
     snapshot = {
       enable = lib.mkEnableOption ''
         the kiseki-snapshot job, which writes a consistent copy of the database
@@ -151,8 +184,23 @@ in
             "-read-token-file"
             "%d/read-token"
           ]
+          ++ lib.optionals cfg.withings.enable [
+            "-host"
+            cfg.host
+            "-withings-dir"
+            withingsDir
+            "-withings-client-id"
+            cfg.withings.clientId
+            "-withings-client-secret-file"
+            "%d/withings-client-secret"
+            "-withings-interval"
+            cfg.withings.interval
+          ]
         );
-        LoadCredential = lib.optional (cfg.readTokenFile != null) "read-token:${cfg.readTokenFile}";
+        ExecStartPre = lib.mkIf cfg.withings.enable "${pkgs.coreutils}/bin/mkdir -p ${withingsDir}";
+        LoadCredential =
+          lib.optional (cfg.readTokenFile != null) "read-token:${cfg.readTokenFile}"
+          ++ lib.optional cfg.withings.enable "withings-client-secret:${cfg.withings.clientSecretFile}";
         Restart = "on-failure";
         RestartSec = 5;
         RestrictAddressFamilies = [

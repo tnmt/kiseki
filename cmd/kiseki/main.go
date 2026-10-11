@@ -16,6 +16,7 @@ import (
 
 	"github.com/tnmt/kiseki/internal/agent"
 	"github.com/tnmt/kiseki/internal/auth"
+	"github.com/tnmt/kiseki/internal/collector/withings"
 	"github.com/tnmt/kiseki/internal/server"
 	"github.com/tnmt/kiseki/internal/source"
 	"github.com/tnmt/kiseki/internal/store"
@@ -29,6 +30,8 @@ commands:
   agent       collect local data and push it to the server
   token new   issue an agent token
   snapshot    write a consistent copy of the database
+  withings auth
+              authorize the Withings collector
 `
 
 func main() {
@@ -50,6 +53,11 @@ func run(args []string) error {
 		return runAgent(args[1:])
 	case "snapshot":
 		return snapshot(args[1:])
+	case "withings":
+		if len(args) < 2 || args[1] != "auth" {
+			return errors.New("usage: kiseki withings auth -dir D -client-id ID -client-secret-file F")
+		}
+		return withingsAuth(args[2:])
 	case "token":
 		if len(args) < 2 || args[1] != "new" {
 			return errors.New("usage: kiseki token new -name N -host H -sources a,b")
@@ -91,7 +99,14 @@ func serve(args []string) error {
 	dbPath := fs.String("db", "kiseki.db", "SQLite database path")
 	tokensFile := fs.String("tokens-file", "", "JSON file listing agent tokens")
 	readTokenFile := fs.String("read-token-file", "", "file containing the read-only token for the web interface; the interface is disabled when unset")
-	tz := fs.String("timezone", "Asia/Tokyo", "time zone that decides which day is today in the web interface")
+	tz := fs.String("timezone", "Asia/Tokyo", "time zone that decides which day is today in the web interface, and the fallback zone of collected records")
+	hostname, _ := os.Hostname()
+	host := fs.String("host", hostname, "host name recorded with records from server-side collectors")
+	withingsDir := fs.String("withings-dir", "", "writable directory for the Withings collector's token and state; the collector is disabled when unset")
+	withingsClientID := fs.String("withings-client-id", "", "Withings application client ID")
+	withingsSecretFile := fs.String("withings-client-secret-file", "", "file containing the Withings application client secret")
+	withingsInterval := fs.Duration("withings-interval", time.Hour, "how often the Withings collector runs; Withings allows one call per 10 minutes")
+	withingsOverlap := fs.Duration("withings-overlap", 48*time.Hour, "how far before the previous sync the Withings collector starts")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -128,6 +143,25 @@ func serve(args []string) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	if *withingsDir != "" {
+		if *host == "" {
+			return errors.New("-host is required for the Withings collector")
+		}
+		if *withingsInterval < 10*time.Minute {
+			return errors.New("-withings-interval must be at least 10m")
+		}
+		app, err := withingsApp(*withingsClientID, *withingsSecretFile, "")
+		if err != nil {
+			return err
+		}
+		c := &withings.Collector{
+			App: app, Dir: *withingsDir, Store: st, Host: *host, TZ: *tz,
+			Overlap: *withingsOverlap, Log: slog.Default().With("collector", "withings"),
+		}
+		go c.Run(ctx, *withingsInterval)
+	}
+
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -160,6 +194,61 @@ func newWebHandler(st *store.Store, tokenFile, tz string) (http.Handler, error) 
 		return nil, err
 	}
 	return w.Handler(), nil
+}
+
+func withingsApp(clientID, secretFile, redirectURI string) (*withings.App, error) {
+	if clientID == "" || secretFile == "" {
+		return nil, errors.New("the Withings client ID and client secret file are required")
+	}
+	b, err := os.ReadFile(secretFile)
+	if err != nil {
+		return nil, fmt.Errorf("withings client secret: %w", err)
+	}
+	secret := strings.TrimSpace(string(b))
+	if secret == "" {
+		return nil, errors.New("withings client secret file is empty")
+	}
+	return &withings.App{
+		ClientID: clientID, ClientSecret: secret, RedirectURI: redirectURI,
+		HTTP: &http.Client{Timeout: time.Minute},
+	}, nil
+}
+
+func withingsAuth(args []string) error {
+	fs := flag.NewFlagSet("withings auth", flag.ContinueOnError)
+	dir := fs.String("dir", "", "directory to write token.json into (the server's -withings-dir, or a local one to copy from)")
+	clientID := fs.String("client-id", "", "Withings application client ID")
+	secretFile := fs.String("client-secret-file", "", "file containing the Withings application client secret")
+	redirectURI := fs.String("redirect-uri", "http://127.0.0.1:8123/callback", "redirect URI registered with the Withings application; must be loopback")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *dir == "" {
+		return errors.New("-dir is required")
+	}
+	app, err := withingsApp(*clientID, *secretFile, *redirectURI)
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+	tok, err := app.Authorize(ctx, func(u string) {
+		fmt.Fprintf(os.Stderr, "open this URL in a browser that can reach %s:\n\n%s\n\n", *redirectURI, u)
+	})
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(*dir, 0o700); err != nil {
+		return err
+	}
+	path := withings.TokenPath(*dir)
+	if err := withings.SaveToken(path, tok); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "token for Withings user %s written to %s\n", tok.UserID, path)
+	return nil
 }
 
 func runAgent(args []string) error {

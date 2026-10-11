@@ -6,6 +6,7 @@ kiseki collects a personal lifelog and archives it on your own server. Agents on
 - [API](docs/api.md)
 - [Agent](docs/agent.md)
 - [Web interface](docs/web.md)
+- [Withings collector](docs/withings.md)
 - [Deployment with NixOS and Home Manager](docs/deploy.md)
 
 ## Development

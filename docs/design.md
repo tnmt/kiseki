@@ -76,6 +76,7 @@ Upserts on `UNIQUE(source, host, record_id)` make resending safe. Mutable record
 
 - Browser history: the pair of a profile identifier and the visit ID
 - Claude Code sessions: `sessionId:uuid` per message
+- Withings: the measure group ID (`grpid`). Details are in `docs/withings.md`
 
 Nothing is compressed. While the data is small, being able to read the JSON directly with `sqlite3` matters more. If disk usage becomes a problem, compressing Claude Code sessions alone is the first option.
 
