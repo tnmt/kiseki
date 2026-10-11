@@ -74,5 +74,4 @@ On 2026-10-11 the collector ran on a local machine with a temporary database, ag
 ## Not handled
 
 - Groups deleted in Withings stay in kiseki.
-- Rendering on the day page. Withings records appear only as counts under "Other".
 - Whether kiseki and Inbox can hold separate authorizations of the same account.

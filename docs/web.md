@@ -33,6 +33,7 @@ It is meant to be combined with network restrictions, such as exposing it only i
 
 ### Day page
 
+- Withings: one line per weigh-in, first on the page. Groups less than 30 minutes apart are one weigh-in, and a later value of the same type wins (the same rule as Inbox). Shown: weight, fat ratio, muscle mass, PWV, heart rate and vascular age; other types are not.
 - Claude Code: title, project name (the last component of the working directory), start and end time, user, reply and subagent message counts, and the beginning of the first prompt.
 - Browser: up to 200 domains, most visited first. The rest are shown only as a count.
 - Times are shown in the wall clock of the time zone (`tz`) recorded with each record.
@@ -88,5 +89,5 @@ Measured on 2026-10-10 against real data from one machine (about 46,000 browser 
 
 ## Not implemented
 
-- Rendering for Withings and GitHub. Those sources appear only as counts under "Other" on the day page.
+- Rendering for GitHub. It appears only as a count under "Other" on the day page.
 - The JSON API for Inbox (`/api/v1/days/{date}` and others).

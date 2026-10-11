@@ -8,6 +8,20 @@
 
 {{if .Empty}}<p class="muted">No records for this day.</p>{{end}}
 
+{{if .WeighIns}}
+<section>
+  <h2>Withings <span class="muted">{{len .WeighIns}} weigh-ins</span></h2>
+  <ul class="weighins">
+    {{range .WeighIns}}
+    <li>
+      <span class="muted">{{.Time}}</span>
+      <span class="metrics">{{range .Metrics}}<span class="metric">{{.Label}} <b>{{.Value}}</b></span>{{end}}</span>
+    </li>
+    {{end}}
+  </ul>
+</section>
+{{end}}
+
 {{if .Sessions}}
 <section>
   <h2>Claude Code <span class="muted">{{len .Sessions}} sessions</span></h2>
