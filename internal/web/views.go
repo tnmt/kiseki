@@ -1,9 +1,11 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"html"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -260,12 +262,27 @@ func (w *Web) handleDay(rw http.ResponseWriter, r *http.Request) {
 		otherList = append(otherList, sourceCount{sourceLabel(src), other[src]})
 	}
 
+	var locations []locationEntry
+	locationFailed := false
+	if w.cfg.Locations != nil {
+		ctx, cancel := context.WithTimeout(r.Context(), locationTimeout)
+		day, err := w.cfg.Locations.Day(ctx, date)
+		cancel()
+		if err != nil {
+			slog.Warn("locations", "date", date, "err", err)
+			locationFailed = true
+		} else {
+			locations = locationEntries(day, date)
+		}
+	}
+
 	w.render(rw, r, "day.html", http.StatusOK, map[string]any{
 		"Date": date, "Weekday": weekday(t.Weekday()),
+		"Locations": locations, "LocationFailed": locationFailed,
 		"Prev": t.AddDate(0, 0, -1).Format(time.DateOnly), "Next": t.AddDate(0, 0, 1).Format(time.DateOnly),
 		"WeighIns": weighIns(withingsRows),
 		"Sessions": sessionList, "Domains": domainList, "HiddenDomains": hidden, "Visits": visits,
-		"Other": otherList, "Empty": len(rows) == 0,
+		"Other": otherList, "Empty": len(rows) == 0 && len(locations) == 0 && !locationFailed,
 	})
 }
 

@@ -33,7 +33,8 @@ It is meant to be combined with network restrictions, such as exposing it only i
 
 ### Day page
 
-- Withings: one line per weigh-in, first on the page. Groups less than 30 minutes apart are one weigh-in, and a later value of the same type wins (the same rule as Inbox). Shown: weight, fat ratio, muscle mass, PWV, heart rate and vascular age; other types are not.
+- Location: stays and moves from overland-server, first on the page, when `-overland-url` is set (below).
+- Withings: one line per weigh-in. Groups less than 30 minutes apart are one weigh-in, and a later value of the same type wins (the same rule as Inbox). Shown: weight, fat ratio, muscle mass, PWV, heart rate and vascular age; other types are not.
 - Claude Code: title, project name (the last component of the working directory), start and end time, user, reply and subagent message counts, and the beginning of the first prompt.
 - Browser: up to 200 domains, most visited first. The rest are shown only as a count.
 - Times are shown in the wall clock of the time zone (`tz`) recorded with each record.
@@ -41,6 +42,23 @@ It is meant to be combined with network restrictions, such as exposing it only i
 ### Session page
 
 Shows text, thinking, tool calls and tool results. Tool results and thinking are collapsed. Parts longer than 4,000 characters (1,500 for tool results) are truncated. From a search result, `?m=<uuid>` opens the page that contains the message.
+
+## Location history
+
+overland-server owns location history, and kiseki does not store it. With
+
+```
+kiseki serve … -overland-url http://127.0.0.1:8095 -overland-read-token-file overland-read-token.txt
+```
+
+the day page calls overland-server's `GET /api/days/{date}` with its read token on every request and shows the stays and moves in time order.
+
+- `{date}` is passed as is, so overland-server's time zone decides the day boundary. Set both servers to the same zone; otherwise the location section covers a different 24 hours than the records.
+- A stay is named after its registered place, then `HOME`/`WORK` from Google Timeline, and otherwise shown as coordinates. It links to Google Maps (with the Google place ID when there is one).
+- Stays overlapping the day keep their full range, so a time on another day is shown with its month and day.
+- Moves come only from imported Google Timeline data, so recorded-only days have stays alone.
+- If overland-server fails or takes longer than 5 seconds, the page is still shown with a note that location history is unavailable, and the error is logged.
+- The top page's per-day counts do not include location.
 
 ## Search
 

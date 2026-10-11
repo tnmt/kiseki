@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tnmt/kiseki/internal/overland"
 	"github.com/tnmt/kiseki/internal/store"
 )
 
@@ -459,5 +461,87 @@ func TestFirstPromptDropsPastedTags(t *testing.T) {
 	}
 	if !strings.Contains(body, "貼り付けた本文 これを続けて") {
 		t.Error("excerpt lost the pasted text")
+	}
+}
+
+type fakeLocations struct {
+	day overland.Day
+	err error
+}
+
+func (f fakeLocations) Day(context.Context, string) (overland.Day, error) { return f.day, f.err }
+
+func newSiteWithLocations(t *testing.T, loc LocationSource) *site {
+	t.Helper()
+	st, err := store.Open(filepath.Join(t.TempDir(), "kiseki.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	w, err := New(Config{Store: st, ReadToken: readToken, Locations: loc})
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(w.Handler())
+	t.Cleanup(srv.Close)
+	jar, _ := cookiejar.New(nil)
+	return &site{srv: srv, store: st, client: &http.Client{Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}}
+}
+
+func TestDayShowsLocations(t *testing.T) {
+	tokyo, _ := time.LoadLocation("Asia/Tokyo")
+	at := func(d, h, m int) time.Time { return time.Date(2026, 10, d, h, m, 0, 0, tokyo) }
+	s := newSiteWithLocations(t, fakeLocations{day: overland.Day{
+		Date: "2026-10-10",
+		Stays: []overland.Stay{
+			{Start: at(10, 9, 10), End: at(10, 18, 0), Latitude: 35.68, Longitude: 139.76, SemanticType: "UNKNOWN", Place: &overland.Place{ID: 2, Name: "Café <Blue>"}},
+			{Start: at(9, 22, 0), End: at(10, 8, 30), Latitude: 35.0, Longitude: 139.0, GooglePlaceID: "ChIJ", SemanticType: "HOME"},
+			{Start: at(10, 19, 0), End: at(11, 7, 0), Latitude: 35.12346, Longitude: 139.5},
+		},
+		Moves: []overland.Move{{Start: at(10, 8, 30), End: at(10, 9, 10), Mode: "IN_TRAIN", DistanceMeters: 7000}},
+	}})
+	s.login(t)
+	_, body, _ := s.get(t, "/day/2026-10-10")
+	order := []string{"10/09 22:00–08:30", "Home", "08:30–09:10", "Train", "7.0 km", "09:10–18:00", "Café &lt;Blue&gt;", "19:00–10/11 07:00", "35.1235, 139.5000"}
+	last := -1
+	for _, want := range order {
+		i := strings.Index(body, want)
+		if i < 0 {
+			t.Errorf("day page lacks %q", want)
+			continue
+		}
+		if i < last {
+			t.Errorf("%q out of order", want)
+		}
+		last = i
+	}
+	if !strings.Contains(body, `href="https://www.google.com/maps/search/?api=1&amp;query=35.000000%2C139.000000&amp;query_place_id=ChIJ"`) {
+		t.Error("stay lacks its map link")
+	}
+	if strings.Contains(body, "No records for this day") {
+		t.Error("a day with locations is reported empty")
+	}
+}
+
+func TestDayToleratesLocationFailure(t *testing.T) {
+	s := newSiteWithLocations(t, fakeLocations{err: errors.New("connection refused")})
+	s.login(t)
+	status, body, _ := s.get(t, "/day/2026-10-10")
+	if status != 200 || !strings.Contains(body, "Location history is unavailable") {
+		t.Errorf("status %d, body lacks the unavailable note", status)
+	}
+}
+
+func TestMoveLabel(t *testing.T) {
+	for mode, want := range map[string]string{
+		"IN_TRAIN": "Train", "WALKING": "Walking", "IN_PASSENGER_VEHICLE": "Car", "IN_BUS": "Bus",
+		"FLYING": "Flight", "UNKNOWN_ACTIVITY_TYPE": "Move", "": "Move", "IN_SUBWAY": "Subway",
+	} {
+		if got := moveLabel(mode); got != want {
+			t.Errorf("moveLabel(%q) = %q, want %q", mode, got, want)
+		}
+	}
+	if distance(850) != "850 m" || distance(12345) != "12.3 km" {
+		t.Error("distance format")
 	}
 }
