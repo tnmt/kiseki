@@ -54,7 +54,7 @@ func New(cfg Config) (*Web, error) {
 	mac.Write([]byte("kiseki-web-session-v1"))
 	w := &Web{cfg: cfg, sessionID: hex.EncodeToString(mac.Sum(nil)), pages: map[string]*template.Template{}}
 
-	funcs := template.FuncMap{"sourceLabel": sourceLabel, "urlq": url.QueryEscape}
+	funcs := template.FuncMap{"sourceLabel": sourceLabel, "urlq": url.QueryEscape, "count": count}
 	for _, name := range []string{"index.html", "day.html", "session.html", "search.html", "status.html", "login.html"} {
 		t, err := template.New(name).Funcs(funcs).ParseFS(assets, "templates/"+pageTemplate, "templates/"+name, "templates/fragments.html")
 		if err != nil {

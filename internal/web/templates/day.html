@@ -10,7 +10,7 @@
 
 {{if .WeighIns}}
 <section>
-  <h2>Withings <span class="muted">{{len .WeighIns}} weigh-ins</span></h2>
+  <h2>Withings <span class="muted">{{count (len .WeighIns) "weigh-in"}}</span></h2>
   <ul class="weighins">
     {{range .WeighIns}}
     <li>
@@ -24,7 +24,7 @@
 
 {{if .Sessions}}
 <section>
-  <h2>Claude Code <span class="muted">{{len .Sessions}} sessions</span></h2>
+  <h2>Claude Code <span class="muted">{{count (len .Sessions) "session"}}</span></h2>
   <ul class="sessions">
     {{range .Sessions}}
     <li>
@@ -43,14 +43,14 @@
 
 {{if .Domains}}
 <section>
-  <h2>Browser <span class="muted">{{.Visits}} visits</span></h2>
+  <h2>Browser <span class="muted">{{count .Visits "visit"}}</span></h2>
   <ul class="domains">
     {{range .Domains}}
     <li>
       <details>
         <summary hx-get="/day/{{$.Date}}/browser?domain={{urlq .Domain}}" hx-target="next .urls" hx-trigger="click once" hx-swap="innerHTML">
           <span class="domain">{{.Domain}}</span>
-          <span class="muted">{{.Visits}} visits · last {{.Last}}</span>
+          <span class="muted">{{count .Visits "visit"}} · last {{.Last}}</span>
         </summary>
         <div class="urls"><p class="muted">Loading…</p></div>
       </details>
