@@ -13,7 +13,7 @@ buildGoModule {
     ];
   };
 
-  vendorHash = "sha256-7IC/p5GlD2EZkDXQzkaZ7E19S/ABKEBsg68vt8pykis=";
+  vendorHash = "sha256-n+WU7qcF6NauBw9DFU4VG1fnDQ387+nibJ/uzApqehk=";
 
   env.CGO_ENABLED = "0";
   subPackages = [ "cmd/kiseki" ];
