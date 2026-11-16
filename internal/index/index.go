@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// maxBodyBytes bounds the indexed text of one record.
+// maxBodyBytes bounds each indexed field of one record.
 const maxBodyBytes = 16 << 10
 
 // Text returns the searchable title and body of a payload. Both are empty for
@@ -21,7 +21,7 @@ func Text(source string, payload []byte) (title, body string) {
 		if json.Unmarshal(payload, &p) != nil {
 			return "", ""
 		}
-		return p.Title, p.URL
+		return clip(p.Title), clip(p.URL)
 	case "claude-code":
 		return claudeText(payload)
 	}
@@ -49,7 +49,7 @@ func claudeText(payload []byte) (string, string) {
 		return "", ""
 	}
 	if l.Type == "ai-title" {
-		return l.AITitle, ""
+		return clip(l.AITitle), ""
 	}
 	if l.Type != "user" && l.Type != "assistant" {
 		return "", ""

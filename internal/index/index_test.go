@@ -41,3 +41,17 @@ func TestUnknownSourceAndClipping(t *testing.T) {
 		t.Errorf("clipped body is %d bytes", len(body))
 	}
 }
+
+func TestEveryFieldIsClipped(t *testing.T) {
+	long := strings.Repeat("あ", 10000)
+	cases := []struct{ source, payload string }{
+		{"browser-history", `{"url":"https://example.com/` + long + `","title":"` + long + `"}`},
+		{"claude-code", `{"type":"ai-title","aiTitle":"` + long + `"}`},
+	}
+	for _, c := range cases {
+		title, body := Text(c.source, []byte(c.payload))
+		if len(title) > maxBodyBytes || len(body) > maxBodyBytes || title == "" {
+			t.Errorf("%s: title %d bytes, body %d bytes", c.source, len(title), len(body))
+		}
+	}
+}
