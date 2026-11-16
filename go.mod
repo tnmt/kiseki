@@ -1,6 +1,6 @@
 module github.com/tnmt/kiseki
 
-go 1.26.8
+go 1.26.10
 
 require modernc.org/sqlite v1.60.1
 
