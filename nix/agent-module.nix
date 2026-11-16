@@ -158,6 +158,14 @@ in
             assertion = (cfg.server == null) != (cfg.serverFile == null);
             message = "services.kiseki-agent: set exactly one of server and serverFile.";
           }
+          {
+            assertion = !lib.hasPrefix builtins.storeDir cfg.tokenFile;
+            message = "services.kiseki-agent: tokenFile must be a runtime path, not a Nix store path; the store is readable by every local user.";
+          }
+          {
+            assertion = cfg.serverFile == null || !lib.hasPrefix builtins.storeDir cfg.serverFile;
+            message = "services.kiseki-agent: serverFile must be a runtime path, not a Nix store path.";
+          }
         ];
       }
 
