@@ -190,9 +190,9 @@ func Records(p Profile, visits []Visit, tz string, excludeDomains []string) ([]s
 }
 
 func excluded(host string, domains []string) bool {
-	host = strings.ToLower(host)
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
 	for _, d := range domains {
-		d = strings.ToLower(strings.TrimPrefix(d, "."))
+		d = strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(d, "."), "."))
 		if host == d || strings.HasSuffix(host, "."+d) {
 			return true
 		}

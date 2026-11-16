@@ -154,10 +154,14 @@ func TestExcluded(t *testing.T) {
 	for host, want := range map[string]bool{
 		"example.com": true, "www.example.com": true, "WWW.Example.COM": true,
 		"notexample.com": false, "example.com.evil.net": false,
+		"example.com.": true, "www.example.com.": true, "example.com.evil.net.": false,
 	} {
 		if got := excluded(host, []string{"example.com"}); got != want {
 			t.Errorf("excluded(%q) = %v", host, got)
 		}
+	}
+	if !excluded("www.example.com", []string{"example.com."}) {
+		t.Error("a configured domain with a trailing dot must still match")
 	}
 }
 
