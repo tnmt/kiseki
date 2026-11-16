@@ -300,6 +300,7 @@ func TestLoadConfig(t *testing.T) {
 			"browser_history":{"browsers":["chrome"],"exclude_profiles":["Profile 1"]}}`,
 		"profile of unlisted browser": `{"server":"x","token_file":"t","spool_dir":"s","timezone":"UTC",
 			"browser_history":{"browsers":["chrome"],"exclude_profiles":["brave/Profile 1"]}}`,
+		"plain http to a remote server": `{"server":"http://k.example","token_file":"t","spool_dir":"s","timezone":"UTC"}`,
 	} {
 		if _, err := LoadConfig(write(body)); err == nil {
 			t.Errorf("%s: expected error", name)

@@ -53,7 +53,7 @@ in
       type = lib.types.nullOr lib.types.str;
       default = null;
       example = "https://kiseki.example.com";
-      description = "Base URL of the kiseki server. Set this or `serverFile`.";
+      description = "Base URL of the kiseki server: https, or http on a loopback host. Set this or `serverFile`.";
     };
 
     serverFile = lib.mkOption {

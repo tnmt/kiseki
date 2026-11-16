@@ -148,7 +148,7 @@ in
       url = lib.mkOption {
         type = lib.types.str;
         example = "http://127.0.0.1:8095";
-        description = "Base URL of overland-server.";
+        description = "Base URL of overland-server: https, or http on a loopback host.";
       };
 
       readTokenFile = lib.mkOption {

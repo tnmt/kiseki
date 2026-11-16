@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/tnmt/kiseki/internal/endpoint"
 )
 
 type Config struct {
@@ -96,6 +98,9 @@ func LoadConfig(path string) (*Config, error) {
 				return nil, fmt.Errorf("config: exclude_profiles: %q must be <browser>/<profile directory> with a browser listed in browsers", e)
 			}
 		}
+	}
+	if err := endpoint.Check(c.Server); err != nil {
+		return nil, fmt.Errorf("config: server: %w", err)
 	}
 	return &c, nil
 }

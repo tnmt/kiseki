@@ -17,6 +17,7 @@ import (
 	"github.com/tnmt/kiseki/internal/agent"
 	"github.com/tnmt/kiseki/internal/auth"
 	"github.com/tnmt/kiseki/internal/collector/withings"
+	"github.com/tnmt/kiseki/internal/endpoint"
 	"github.com/tnmt/kiseki/internal/overland"
 	"github.com/tnmt/kiseki/internal/server"
 	"github.com/tnmt/kiseki/internal/source"
@@ -131,6 +132,9 @@ func serve(args []string) error {
 	if *overlandURL != "" {
 		if *readTokenFile == "" {
 			return errors.New("-overland-url requires the web interface (-read-token-file)")
+		}
+		if err := endpoint.Check(*overlandURL); err != nil {
+			return fmt.Errorf("-overland-url: %w", err)
 		}
 		token, err := readSecret(*overlandTokenFile, "overland read token")
 		if err != nil {

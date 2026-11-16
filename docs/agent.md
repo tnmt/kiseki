@@ -26,7 +26,7 @@ JSON. Unknown fields are an error.
 }
 ```
 
-- `server` / `server_file`: the server's base URL, given either inline or as a file holding it. Exactly one is required. `server_file` keeps the URL out of a configuration that is public, such as a Nix store path or a published repository; surrounding whitespace in the file is ignored.
+- `server` / `server_file`: the server's base URL, given either inline or as a file holding it. Exactly one is required. `server_file` keeps the URL out of a configuration that is public, such as a Nix store path or a published repository; surrounding whitespace in the file is ignored. The URL must be `https`; `http` is accepted only for a loopback host (127.0.0.0/8, `::1`, `localhost`), and anything else is rejected at startup.
 - `token_file`: the raw token that `kiseki token new` printed to standard error.
 - `timezone`: the `tz` recorded with each record. Defaults to the system zone name. Required where the system has no IANA name (`Local`).
 - `overlap_hours`: how far back to resend. Defaults to 48.

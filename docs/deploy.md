@@ -119,6 +119,8 @@ services.kiseki.overland = {
 };
 ```
 
+The URL must be `https`, or `http` on a loopback host (127.0.0.0/8, `::1`, `localhost`).
+
 ### 5. Check the server
 
 ```
@@ -159,7 +161,7 @@ journalctl --user -u kiseki-agent -e
 
 The first run sends the whole history and takes some tens of seconds.
 
-To keep the server URL out of a public configuration, set `serverFile` to a file holding the URL (decrypted by sops-nix, for example) instead of `server`.
+To keep the server URL out of a public configuration, set `serverFile` to a file holding the URL (decrypted by sops-nix, for example) instead of `server`. Either way the URL must be `https` (`http` only for a loopback host); the agent refuses to start otherwise.
 
 ### 7. Check the backup
 

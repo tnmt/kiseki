@@ -53,6 +53,8 @@ kiseki serve … -overland-url http://127.0.0.1:8095 -overland-read-token-file o
 
 the day page calls overland-server's `GET /api/days/{date}` with its read token on every request and shows the stays and moves in time order.
 
+- `-overland-url` must be `https`, or `http` on a loopback host (127.0.0.0/8, `::1`, `localhost`); any other URL stops the server at startup.
+
 - `{date}` is passed as is, so overland-server's time zone decides the day boundary. Set both servers to the same zone; otherwise the location section covers a different 24 hours than the records.
 - A stay is named after its registered place, then `HOME`/`WORK` from Google Timeline, and otherwise shown as coordinates. It links to Google Maps (with the Google place ID when there is one).
 - Stays overlapping the day keep their full range, so a time on another day is shown with its month and day.
