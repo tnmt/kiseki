@@ -151,9 +151,11 @@ func convert(line []byte, tz string, lastTS *int64, cwd *string, opts Options) (
 	return store.Record{RecordID: recordID, OccurredAt: at, TZ: tz, Payload: payload}, true
 }
 
+// excluded treats an unknown cwd as excluded when any prefix is set, since
+// nothing shows the line is outside them.
 func excluded(cwd string, prefixes []string) bool {
 	if cwd == "" {
-		return false
+		return len(prefixes) > 0
 	}
 	for _, p := range prefixes {
 		p = strings.TrimRight(p, "/")

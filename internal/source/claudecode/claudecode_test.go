@@ -122,6 +122,20 @@ func TestExcludeByCWDAlsoCoversTitle(t *testing.T) {
 	}
 }
 
+func TestExclusionSkipsLinesWithUnknownCWD(t *testing.T) {
+	m := msg("user", "u1", "2026-10-10T01:00:00.000Z", "where am I")
+	delete(m, "cwd")
+	p := write(t, line(t, m))
+	res, _ := ReadFile(p, FileState{}, "UTC", Options{ExcludeCWDPrefixes: []string{"/home/u/secret"}})
+	if len(res.Records) != 0 {
+		t.Errorf("a line without cwd was sent despite exclusions: %d records", len(res.Records))
+	}
+	res, _ = ReadFile(p, FileState{}, "UTC", Options{})
+	if len(res.Records) != 1 {
+		t.Errorf("without exclusions a line without cwd is kept, got %d records", len(res.Records))
+	}
+}
+
 func TestRedactionAndShrinking(t *testing.T) {
 	big := strings.Repeat("x", 300<<10)
 	m := msg("user", "u1", "2026-10-10T01:00:00.000Z", "key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123 and ghp_"+strings.Repeat("a", 36))
