@@ -391,6 +391,18 @@ func TestSnippet(t *testing.T) {
 	}
 }
 
+func TestSnippetCostDoesNotGrowWithMatchPosition(t *testing.T) {
+	q := strings.Repeat("a", 1000) + "b"
+	text := strings.Repeat("a", 20000) + "b"
+	allocs := testing.AllocsPerRun(5, func() { snippet(text, q, 60) })
+	if allocs > 50 {
+		t.Errorf("snippet made %.0f allocations", allocs)
+	}
+	if got := string(snippet("İx needle", "NEEDLE", 3)); got != "İx <mark>needle</mark>" {
+		t.Errorf("snippet after a rune whose lower case is wider = %q", got)
+	}
+}
+
 func measures(ms ...[3]int64) map[string]any {
 	var list []map[string]any
 	for _, m := range ms {

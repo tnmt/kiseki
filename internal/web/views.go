@@ -635,33 +635,28 @@ func buildHit(f store.SearchHit, q string) hit {
 // Everything is HTML-escaped before the marks are added.
 func snippet(text, q string, context int) template.HTML {
 	text = strings.Join(strings.Fields(text), " ")
-	tr, qr := []rune(text), []rune(strings.TrimSpace(q))
-	fold := func(rs []rune) []rune {
-		out := make([]rune, len(rs))
-		for i, r := range rs {
-			out[i] = unicode.ToLower(r)
-		}
-		return out
-	}
-	ft, fq := fold(tr), fold(qr)
+	q = strings.TrimSpace(q)
+	// ToLower maps rune to rune, so rune offsets in the folded text are
+	// offsets in text.
+	ft, fq := strings.Map(unicode.ToLower, text), strings.Map(unicode.ToLower, q)
 	at := -1
-	for i := 0; len(fq) > 0 && i+len(fq) <= len(ft); i++ {
-		if string(ft[i:i+len(fq)]) == string(fq) {
-			at = i
-			break
+	if fq != "" {
+		if i := strings.Index(ft, fq); i >= 0 {
+			at = utf8.RuneCountInString(ft[:i])
 		}
 	}
 	if at < 0 {
 		return template.HTML(html.EscapeString(truncate(text, context*2)))
 	}
-	start, end := max(at-context, 0), min(at+len(fq)+context, len(tr))
+	tr, n := []rune(text), utf8.RuneCountInString(fq)
+	start, end := max(at-context, 0), min(at+n+context, len(tr))
 	var b strings.Builder
 	if start > 0 {
 		b.WriteString("…")
 	}
 	b.WriteString(html.EscapeString(string(tr[start:at])))
-	b.WriteString("<mark>" + html.EscapeString(string(tr[at:at+len(fq)])) + "</mark>")
-	b.WriteString(html.EscapeString(string(tr[at+len(fq) : end])))
+	b.WriteString("<mark>" + html.EscapeString(string(tr[at:at+n])) + "</mark>")
+	b.WriteString(html.EscapeString(string(tr[at+n : end])))
 	if end < len(tr) {
 		b.WriteString("…")
 	}
