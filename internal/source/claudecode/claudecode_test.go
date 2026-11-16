@@ -96,14 +96,13 @@ func TestReadFileResumesAndLeavesPartialLine(t *testing.T) {
 
 func TestLaterCopyOfSameUUIDWins(t *testing.T) {
 	a := msg("user", "u1", "2026-10-10T01:00:00.000Z", "same")
-	a["promptId"] = "old"
 	b := msg("user", "u1", "2026-10-10T01:00:00.000Z", "same")
-	b["promptId"] = "new"
+	b["isSidechain"] = true
 	res, err := ReadFile(write(t, line(t, a)+line(t, b)), FileState{}, "UTC", Options{})
 	if err != nil || len(res.Records) != 1 {
 		t.Fatalf("records = %d err %v", len(res.Records), err)
 	}
-	if !strings.Contains(string(res.Records[0].Payload), `"promptId":"new"`) {
+	if !strings.Contains(string(res.Records[0].Payload), `"isSidechain":true`) {
 		t.Errorf("payload = %s", res.Records[0].Payload)
 	}
 }
@@ -138,25 +137,28 @@ func TestExclusionSkipsLinesWithUnknownCWD(t *testing.T) {
 
 func TestRedactionAndShrinking(t *testing.T) {
 	big := strings.Repeat("x", 300<<10)
-	m := msg("user", "u1", "2026-10-10T01:00:00.000Z", "key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123 and ghp_"+strings.Repeat("a", 36))
-	m["systemReport"] = "Windows Version: Windows 10 Home\nProduct  Key: ABCDE-12345-FGHIJ-67890-KLMNO\nCLAUDE_CODE_MESSAGING_TOKEN=tok_0123456789abcdef"
-	m["toolUseResult"] = map[string]any{
-		"password": "hunter2hunter2",
-		"stdout":   "DB_PASSWORD=supersecretvalue\nAuthorization: Bearer abcdefghijklmnopqrstuvwx\n-----BEGIN RSA PRIVATE KEY-----\nMIIE\n-----END RSA PRIVATE KEY-----",
-		"big":      big,
-		"image":    map[string]any{"type": "base64", "media_type": "image/jpeg", "data": strings.Repeat("A", 5000)},
-	}
+	m := msg("user", "u1", "2026-10-10T01:00:00.000Z", "")
+	m["message"] = map[string]any{"role": "user", "content": []any{
+		map[string]any{"type": "text", "text": "key sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123 and ghp_" + strings.Repeat("a", 36)},
+		map[string]any{"type": "text", "text": "Product  Key: ABCDE-12345-FGHIJ-67890-KLMNO\nCLAUDE_CODE_MESSAGING_TOKEN=tok_0123456789abcdef"},
+		map[string]any{"type": "tool_result", "tool_use_id": "t1", "content": []any{
+			map[string]any{"type": "text", "text": "DB_PASSWORD=supersecretvalue\nAuthorization: Bearer abcdefghijklmnopqrstuvwx\n-----BEGIN RSA PRIVATE KEY-----\nMIIE\n-----END RSA PRIVATE KEY-----"},
+			map[string]any{"type": "text", "text": big},
+			map[string]any{"type": "image", "source": map[string]any{"type": "base64", "data": strings.Repeat("A", 5000)}},
+		}},
+		map[string]any{"type": "image", "source": map[string]any{"type": "base64", "media_type": "image/jpeg", "data": strings.Repeat("A", 5000)}},
+	}}
 	res, err := ReadFile(write(t, line(t, m)), FileState{}, "UTC", Options{})
 	if err != nil || len(res.Records) != 1 {
 		t.Fatalf("err %v records %d", err, len(res.Records))
 	}
 	got := string(res.Records[0].Payload)
-	for _, leak := range []string{"sk-ant-api03", "ghp_aaaa", "hunter2hunter2", "supersecretvalue", "ABCDE-12345", "tok_0123456789abcdef", "abcdefghijklmnopqrstuvwx", "MIIE", strings.Repeat("A", 100)} {
+	for _, leak := range []string{"sk-ant-api03", "ghp_aaaa", "supersecretvalue", "ABCDE-12345", "tok_0123456789abcdef", "abcdefghijklmnopqrstuvwx", "MIIE", strings.Repeat("A", 100)} {
 		if strings.Contains(got, leak) {
 			t.Errorf("payload still contains %q", leak)
 		}
 	}
-	for _, want := range []string{"DB_PASSWORD=[REDACTED]", "CLAUDE_CODE_MESSAGING_TOKEN=[REDACTED]", "Product  Key: [REDACTED]", "Authorization: Bearer [REDACTED]", "[image data omitted: 5000 bytes]", "[truncated "} {
+	for _, want := range []string{"DB_PASSWORD=[REDACTED]", "CLAUDE_CODE_MESSAGING_TOKEN=[REDACTED]", "Product  Key: [REDACTED]", "Authorization: Bearer [REDACTED]", `{"type":"image"}`, "[truncated "} {
 		if !strings.Contains(got, want) {
 			t.Errorf("payload lacks %q", want)
 		}
@@ -166,13 +168,55 @@ func TestRedactionAndShrinking(t *testing.T) {
 	}
 }
 
+func TestOnlyAllowedFieldsAreSent(t *testing.T) {
+	m := msg("assistant", "u1", "2026-10-10T01:00:00.000Z", "")
+	m["isSidechain"] = true
+	m["token"] = "opaque-top-level"
+	m["toolUseResult"] = map[string]any{"clientSecret": "opaque-tool-result", "stdout": "opaque-stdout"}
+	m["gitBranch"] = "opaque-branch"
+	m["message"] = map[string]any{
+		"role": "assistant", "model": "opaque-model", "usage": map[string]any{"input_tokens": 1},
+		"content": []any{
+			map[string]any{"type": "thinking", "thinking": "considering", "signature": "opaque-signature"},
+			map[string]any{"type": "text", "text": "answer"},
+			map[string]any{"type": "tool_use", "id": "opaque-id", "name": "Bash", "input": map[string]any{"command": "ls", "description": "list", "cookie": "opaque-cookie"}},
+			map[string]any{"type": "tool_result", "tool_use_id": "opaque-id", "content": "result text"},
+			map[string]any{"type": "server_tool_use", "name": "opaque-server-tool"},
+		},
+	}
+	title := map[string]any{"type": "ai-title", "sessionId": "s1", "aiTitle": "A title", "credential": "opaque-title"}
+	sys := map[string]any{"type": "system", "uuid": "y1", "sessionId": "s1", "timestamp": "2026-10-10T01:00:01.000Z", "cwd": "/home/u/proj", "content": "opaque-hook-output"}
+	res, err := ReadFile(write(t, line(t, m)+line(t, sys)+line(t, title)), FileState{}, "UTC", Options{})
+	if err != nil || len(res.Records) != 3 {
+		t.Fatalf("err %v records %d", err, len(res.Records))
+	}
+	var all string
+	for _, r := range res.Records {
+		all += string(r.Payload) + "\n"
+	}
+	if strings.Contains(all, "opaque") || strings.Contains(all, "usage") || strings.Contains(all, "tool_use_id") {
+		t.Errorf("payload carries a field outside the allowlist:\n%s", all)
+	}
+	want := []string{
+		`"type":"assistant"`, `"uuid":"u1"`, `"sessionId":"s1"`, `"timestamp":"2026-10-10T01:00:00.000Z"`, `"cwd":"/home/u/proj"`, `"isSidechain":true`,
+		`"role":"assistant"`, `{"thinking":"considering","type":"thinking"}`, `{"text":"answer","type":"text"}`,
+		`{"input":{"command":"ls","description":"list"},"name":"Bash","type":"tool_use"}`, `{"content":"result text","type":"tool_result"}`,
+		`"type":"system"`, `"aiTitle":"A title"`,
+	}
+	for _, w := range want {
+		if !strings.Contains(all, w) {
+			t.Errorf("payload lacks %s:\n%s", w, all)
+		}
+	}
+}
+
 func TestOversizedLineBecomesStub(t *testing.T) {
 	m := msg("user", "u1", "2026-10-10T01:00:00.000Z", "x")
 	parts := make([]any, 8)
 	for i := range parts {
-		parts[i] = strings.Repeat("y", 200<<10)
+		parts[i] = map[string]any{"type": "text", "text": strings.Repeat("y", 200<<10)}
 	}
-	m["many"] = parts
+	m["message"] = map[string]any{"role": "user", "content": parts}
 	res, err := ReadFile(write(t, line(t, m)), FileState{}, "UTC", Options{})
 	if err != nil || len(res.Records) != 1 {
 		t.Fatalf("err %v records %d", err, len(res.Records))
@@ -184,12 +228,10 @@ func TestOversizedLineBecomesStub(t *testing.T) {
 	}
 }
 
-func TestNumbersAndUnicodeSurvive(t *testing.T) {
+func TestUnicodeAndMarkupSurvive(t *testing.T) {
 	m := msg("assistant", "u1", "2026-10-10T01:00:00.000Z", "日本語 <b>&</b>")
-	m["usage"] = map[string]any{"input_tokens": 12345678901234}
 	res, _ := ReadFile(write(t, line(t, m)), FileState{}, "UTC", Options{})
-	got := string(res.Records[0].Payload)
-	if !strings.Contains(got, "日本語 <b>&</b>") || !strings.Contains(got, `"input_tokens":12345678901234`) {
+	if got := string(res.Records[0].Payload); !strings.Contains(got, "日本語 <b>&</b>") {
 		t.Errorf("payload = %s", got)
 	}
 }

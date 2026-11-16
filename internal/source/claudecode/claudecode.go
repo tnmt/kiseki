@@ -166,9 +166,17 @@ func excluded(cwd string, prefixes []string) bool {
 	return false
 }
 
-// sanitize redacts secrets and shrinks the line. A line that is still too
-// large becomes a stub that keeps the envelope, so the record exists and the
-// batch is not rejected.
+// envelopeKeys are the top-level fields sent besides the message. Everything
+// else in a transcript line, such as toolUseResult, usage or hook output, is
+// dropped, so a secret under a field nobody reads is never sent.
+var envelopeKeys = []string{"type", "uuid", "sessionId", "timestamp", "cwd", "isSidechain", "isMeta", "aiTitle"}
+
+// toolInputKeys are the tool_use input fields the web interface summarises.
+var toolInputKeys = []string{"description", "command", "file_path", "pattern", "query", "url", "prompt"}
+
+// sanitize keeps the allowed fields, redacts secrets and shrinks the line. A
+// line that is still too large becomes a stub that keeps the envelope, so the
+// record exists and the batch is not rejected.
 func sanitize(line []byte) (json.RawMessage, bool) {
 	dec := json.NewDecoder(bytes.NewReader(line))
 	dec.UseNumber()
@@ -176,19 +184,90 @@ func sanitize(line []byte) (json.RawMessage, bool) {
 	if err := dec.Decode(&v); err != nil {
 		return nil, false
 	}
-	out, err := marshal(scrub(v))
+	kept := pick(v, envelopeKeys)
+	if m, ok := v["message"].(map[string]any); ok {
+		msg := pick(m, []string{"role"})
+		if c, ok := m["content"]; ok {
+			msg["content"] = keepContent(c)
+		}
+		kept["message"] = msg
+	}
+	out, err := marshal(scrub(kept))
 	if err != nil {
 		return nil, false
 	}
 	if len(out) <= maxPayloadBytes {
 		return out, true
 	}
-	stub := map[string]any{"truncated": true, "original_bytes": len(line)}
-	for _, k := range []string{"type", "uuid", "sessionId", "timestamp", "cwd", "parentUuid", "isSidechain"} {
-		if val, ok := v[k]; ok {
-			stub[k] = val
-		}
-	}
+	stub := pick(kept, envelopeKeys)
+	stub["truncated"], stub["original_bytes"] = true, len(line)
 	out, err = marshal(stub)
 	return out, err == nil
+}
+
+func pick(m map[string]any, keys []string) map[string]any {
+	out := map[string]any{}
+	for _, k := range keys {
+		if val, ok := m[k]; ok {
+			out[k] = val
+		}
+	}
+	return out
+}
+
+// keepContent keeps a message's text and the parts of its blocks that the
+// web interface and the search index show. Image data is not kept.
+func keepContent(c any) any {
+	blocks, ok := c.([]any)
+	if !ok {
+		if s, ok := c.(string); ok {
+			return s
+		}
+		return nil
+	}
+	out := []any{}
+	for _, b := range blocks {
+		m, ok := b.(map[string]any)
+		if !ok {
+			continue
+		}
+		switch m["type"] {
+		case "text":
+			out = append(out, pick(m, []string{"type", "text"}))
+		case "thinking":
+			out = append(out, pick(m, []string{"type", "thinking"}))
+		case "tool_use":
+			kept := pick(m, []string{"type", "name"})
+			if in, ok := m["input"].(map[string]any); ok {
+				kept["input"] = pick(in, toolInputKeys)
+			}
+			out = append(out, kept)
+		case "tool_result":
+			kept := pick(m, []string{"type"})
+			if rc, ok := m["content"]; ok {
+				kept["content"] = keepResultContent(rc)
+			}
+			out = append(out, kept)
+		case "image":
+			out = append(out, map[string]any{"type": "image"})
+		}
+	}
+	return out
+}
+
+func keepResultContent(c any) any {
+	blocks, ok := c.([]any)
+	if !ok {
+		if s, ok := c.(string); ok {
+			return s
+		}
+		return nil
+	}
+	out := []any{}
+	for _, b := range blocks {
+		if m, ok := b.(map[string]any); ok && m["type"] == "text" {
+			out = append(out, pick(m, []string{"type", "text"}))
+		}
+	}
+	return out
 }

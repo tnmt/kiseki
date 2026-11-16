@@ -88,9 +88,11 @@ Session files are append-only, so reading resumes from a per-file byte offset ke
 
 ### Processing before sending
 
-- Base64 image data is replaced with `[image data omitted: N bytes]`.
+- Only listed fields are sent; everything else in a line (`toolUseResult`, `usage`, `model`, `gitBranch`, hook output, block ids and signatures, and any unknown field) is dropped:
+  - top level: `type`, `uuid`, `sessionId`, `timestamp`, `cwd`, `isSidechain`, `isMeta`, `aiTitle`
+  - `message`: `role` and `content`. `content` is a string, or blocks of these kinds: `text` (`text`), `thinking` (`thinking`), `tool_use` (`name`, and `description`, `command`, `file_path`, `pattern`, `query`, `url`, `prompt` from `input`), `tool_result` (its text), `image` (the type only, no data). Other block kinds are dropped.
 - Strings longer than 256 KiB are truncated and marked `[truncated N bytes]`.
-- A line still larger than 900 KiB becomes a stub (`"truncated": true`) that keeps only `type`, `uuid`, `sessionId`, `timestamp`, `cwd`, `parentUuid` and `isSidechain`, so that the server's 1 MiB limit does not reject the whole batch.
+- A line still larger than 900 KiB becomes a stub (`"truncated": true`) that keeps only the top-level fields above, so that the server's 1 MiB limit does not reject the whole batch.
 - Secrets in known formats are replaced with `[REDACTED]`:
   - private key blocks
   - Anthropic and OpenAI style API keys
