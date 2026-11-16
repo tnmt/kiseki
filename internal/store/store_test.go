@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -299,6 +300,30 @@ func TestSnapshotIsAConsistentCopyWhileServing(t *testing.T) {
 	defer again.Close()
 	if hits, _ := again.Search(ctx, "later", "", 10); len(hits) != 1 {
 		t.Errorf("second snapshot is stale: %d hits", len(hits))
+	}
+}
+
+func TestSnapshotIsOwnerOnlyUnderPermissiveUmask(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "kiseki.db")
+	s, err := Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Close()
+
+	old := syscall.Umask(0o022)
+	defer syscall.Umask(old)
+	out := filepath.Join(dir, "out.db")
+	if err := Snapshot(context.Background(), dbPath, out); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Errorf("snapshot mode = %o, want 600", perm)
 	}
 }
 

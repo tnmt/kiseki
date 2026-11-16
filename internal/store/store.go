@@ -264,6 +264,16 @@ func Snapshot(ctx context.Context, dbPath, outPath string) error {
 	if err := os.Remove(tmp); err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	// SQLite would create the file with the caller's umask. VACUUM INTO
+	// accepts an empty file, so creating it first keeps the copy owner-only.
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(tmp)
+		return err
+	}
 	if _, err := db.ExecContext(ctx, "VACUUM INTO ?", tmp); err != nil {
 		os.Remove(tmp)
 		return fmt.Errorf("vacuum into: %w", err)
